@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 风水环境与气场走向交互模型（四角环抱绿林·高精细腻版）</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #0b1120;
+            font-family: -apple-system, BlinkMacSystemFont, 'Microsoft YaHei', sans-serif;
+            color: #f8fafc;
+            user-select: none;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+        /* 玻璃拟态面板 */
+        .panel {
+            position: absolute;
+            background: rgba(15, 23, 42, 0.86);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 14px;
+            padding: 16px 18px;
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.65);
+            pointer-events: auto;
+            z-index: 100;
+        }
+        #ui-panel {
+            top: 18px;
+            left: 18px;
+            width: 315px;
+        }
+        #control-panel {
+            top: 18px;
+            right: 18px;
+            width: 330px;
+            border-color: rgba(251, 191, 36, 0.38);
+        }
+        h2 {
+            margin: 0 0 10px 0;
+            font-size: 15px;
+            color: #fbbf24;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            letter-spacing: 0.5px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 8px;
+            font-size: 12px;
+            line-height: 1.45;
+            color: #cbd5e1;
+        }
+        .legend-item b {
+            color: #f8fafc;
+        }
+        .color-box {
+            width: 13px;
+            height: 13px;
+            border-radius: 4px;
+            margin-right: 9px;
+            margin-top: 2px;
+            flex-shrink: 0;
+        }
+        .controls-tip {
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px dashed rgba(255, 255, 255, 0.15);
+            font-size: 11.5px;
+            color: #94a3b8;
+        }
+        .btn-group {
+            margin-top: 10px;
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        button {
+            background: rgba(30, 41, 59, 0.9);
+            color: #e2e8f0;
+            border: 1px solid #475569;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11.5px;
+            transition: all 0.18s ease;
+        }
+        button:hover, button.active {
+            background: #fbbf24;
+            color: #0f172a;
+            border-color: #fbbf24;
+            font-weight: bold;
+            box-shadow: 0 0 12px rgba(251, 191, 36, 0.4);
+        }
+        /* 滑块控制行 */
+        .control-row {
+            margin-bottom: 11px;
+        }
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            margin-bottom: 4px;
+            color: #e2e8f0;
+        }
+        .val-badge {
+            color: #fbbf24;
+            font-weight: bold;
+            font-family: Consolas, monospace;
+        }
+        .slider-wrap {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        input[type="range"] {
+            flex: 1;
+            accent-color: #fbbf24;
+            cursor: pointer;
+            height: 5px;
+        }
+        .mini-btn {
+            padding: 3px 7px;
+            font-size: 11px;
+        }
+        #fengshui-status {
+            margin-top: 10px;
+            padding: 9px 11px;
+            background: rgba(34, 197, 94, 0.14);
+            border-left: 3px solid #22c55e;
+            border-radius: 6px;
+            font-size: 11.5px;
+            line-height: 1.5;
+            color: #dcfce7;
+        }
+        /* 3D 浮动标签 */
+        .floating-label {
+            position: absolute;
+            background: rgba(15, 23, 42, 0.88);
+            border: 1.5px solid #fbbf24;
+            color: #fbbf24;
+            padding: 5px 13px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            pointer-events: none;
+            transform: translate(-50%, -100%);
+            white-space: nowrap;
+            box-shadow: 0 4px 18px rgba(251, 191, 36, 0.45);
+            z-index: 99;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<!-- 7楼浮动标签 -->
+<div id="target-label" class="floating-label">★ 目标租住层：7楼（前有玉带环抱绿林·明堂聚气）</div>
+
+<!-- 左上角：图例与视角面板 -->
+<div id="ui-panel" class="panel">
+    <h2>🧭 3D 风水气场与形峦图例</h2>
+    <div class="legend-item">
+        <div class="color-box" style="background: #fbbf24; box-shadow: 0 0 8px #fbbf24;"></div>
+        <span><b>7楼租住位置 + 朝向箭头</b>：高亮区与金色箭头代表7楼及窗户正朝向</span>
+    </div>
+    <div class="legend-item">
+        <div class="color-box" style="background: #16a34a; border: 1px solid #4ade80;"></div>
+        <span><b>四角行道树 & 玉带环抱林</b>：路口四角皆有绿树，目标楼前双层弧形密林温柔环抱大楼</span>
+    </div>
+    <div class="legend-item">
+        <div class="color-box" style="background: #ef4444;"></div>
+        <span><b>红色气流（路口车流噪气）</b>：主干道高速交汇的原始冲煞气流</span>
+    </div>
+    <div class="legend-item">
+        <div class="color-box" style="background: #f97316;"></div>
+        <span><b>橙色导流（弧形绿林化煞）</b>：顺着蓝色虚线与环抱树冠向两侧滑开的偏转气流</span>
+    </div>
+    <div class="legend-item">
+        <div class="color-box" style="background: #22c55e;"></div>
+        <span><b>绿色气流（内明堂吉气）</b>：经环抱树林过滤后，在楼前广场缓升至7楼窗前的吉气</span>
+    </div>
+    <div class="legend-item">
+        <div class="color-box" style="background: #38bdf8;"></div>
+        <span><b>蓝色裙楼（下盘护持）</b>：随主楼同步旋转的低矮商业底座</span>
+    </div>
+
+    <div class="btn-group">
+        <button id="btn-bird" class="active" onclick="setView('bird')">航拍鸟瞰视角</button>
+        <button id="btn-top" onclick="setView('top')">卫星正俯视(对照截图2)</button>
+        <button id="btn-window" onclick="setView('window')">👁️ 7楼窗外视角</button>
+        <button id="btn-cross" onclick="setView('cross')">路口仰视视角</button>
+    </div>
+
+    <div class="controls-tip">
+        💡 <b>视角操作</b>：左键拖动旋转 | 滚轮缩放 | 右键平移画面
+    </div>
+</div>
+
+<!-- 右上角：手动控制大楼旋转与位置面板 -->
+<div id="control-panel" class="panel">
+    <h2>
+        <span>🛠️ 楼栋旋转与位置手动调整</span>
+        <button class="mini-btn" onclick="resetBuilding()">重置为截图角度(48°)</button>
+    </h2>
+
+    <!-- 1. 旋转角度控制 -->
+    <div class="control-row">
+        <div class="control-label">
+            <span>🔄 楼栋整体旋转角度</span>
+            <span id="val-rot" class="val-badge">48°</span>
+        </div>
+        <div class="slider-wrap">
+            <button class="mini-btn" onclick="stepRotate(-5)">↺ -5°</button>
+            <input type="range" id="slider-rot" min="-180" max="180" value="48" step="1" oninput="updateBuildingTransform()">
+            <button class="mini-btn" onclick="stepRotate(5)">↻ +5°</button>
+        </div>
+    </div>
+
+    <!-- 2. 楼栋左右位置 (X) -->
+    <div class="control-row">
+        <div class="control-label">
+            <span>↔️ 楼栋左右平移 (东/西)</span>
+            <span id="val-posX" class="val-badge">36</span>
+        </div>
+        <div class="slider-wrap">
+            <button class="mini-btn" onclick="stepPos('x', -2)">◀ 左移</button>
+            <input type="range" id="slider-posX" min="-10" max="85" value="36" step="1" oninput="updateBuildingTransform()">
+            <button class="mini-btn" onclick="stepPos('x', 2)">右移 ▶</button>
+        </div>
+    </div>
+
+    <!-- 3. 楼栋前后位置 (Z) -->
+    <div class="control-row">
+        <div class="control-label">
+            <span>↕️ 楼栋前后平移 (北/南)</span>
+            <span id="val-posZ" class="val-badge">26</span>
+        </div>
+        <div class="slider-wrap">
+            <button class="mini-btn" onclick="stepPos('z', 2)">▲ 往里</button>
+            <input type="range" id="slider-posZ" min="-10" max="75" value="26" step="1" oninput="updateBuildingTransform()">
+            <button class="mini-btn" onclick="stepPos('z', -2)">往外 ▼</button>
+        </div>
+    </div>
+
+    <!-- 4. 7楼房源在楼内的左右段位置 -->
+    <div class="control-row">
+        <div class="control-label">
+            <span>🏠 7楼房源在楼内位置(左端↔右端)</span>
+            <span id="val-unit" class="val-badge">居中(0)</span>
+        </div>
+        <div class="slider-wrap">
+            <button class="mini-btn" onclick="stepUnit(2)">◀ 靠左</button>
+            <input type="range" id="slider-unit" min="-16" max="16" value="0" step="1" oninput="updateBuildingTransform()">
+            <button class="mini-btn" onclick="stepUnit(-2)">靠右 ▶</button>
+        </div>
+    </div>
+
+    <!-- 5. 护宅林环抱距离微调 -->
+    <div class="control-row">
+        <div class="control-label">
+            <span>🌲 护宅绿林环抱半径微调</span>
+            <span id="val-tree" class="val-badge">标准环抱(0)</span>
+        </div>
+        <div class="slider-wrap">
+            <button class="mini-btn" onclick="stepTree(-2)">收拢</button>
+            <input type="range" id="slider-tree" min="-10" max="15" value="0" step="1" oninput="updateTreeEmbrace()">
+            <button class="mini-btn" onclick="stepTree(2)">外扩</button>
+        </div>
+    </div>
+
+    <!-- 6. 窗户朝向翻转 -->
+    <div class="control-row" style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-size:12px;">🪟 7楼主要采光窗朝向：</span>
+        <button id="btn-flip" onclick="toggleWindowSide()">切换正/背面 (当前: 朝前)</button>
+    </div>
+
+    <!-- 实时风水气场反馈 -->
+    <div id="fengshui-status">
+        ✨ <b>实时气场状态</b>：楼前弧形绿林呈“玉带环抱”之势守护大楼，十字路口四角绿植完备，气流柔和聚于7楼明堂。
+    </div>
+</div>
+
+<script>
+    // 1. 初始化场景、相机与细腻渲染
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0b1120);
+    scene.fog = new THREE.FogExp2(0x0b1120, 0.0016);
+
+    const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 1, 1200);
+    // 默认采用与你截图1一致的俯视鸟瞰角度
+    camera.position.set(12, 125, -145);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.target.set(12, 6, 8);
+
+    // 2. 细腻灯光系统（半球光 + 暖阳主光 + 补光）
+    const hemiLight = new THREE.HemisphereLight(0xdbeafe, 0x1e293b, 0.65);
+    scene.add(hemiLight);
+
+    const dirLight = new THREE.DirectionalLight(0xfff7ed, 0.9);
+    dirLight.position.set(65, 160, -85);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
+    dirLight.shadow.camera.left = -120;
+    dirLight.shadow.camera.right = 120;
+    dirLight.shadow.camera.top = 120;
+    dirLight.shadow.camera.bottom = -120;
+    scene.add(dirLight);
+
+    // 3. 细腻化地面、十字路口、斑马线与蓝色虚线轨迹 (十字路口中心固定在 X=-8, Z=-22)
+    const crossCenter = new THREE.Vector3(-8, 0, -22);
+    const roadWidthNS = 28;
+    const roadWidthEW = 32;
+
+    // 城市大地基底
+    const ground = new THREE.Mesh(
+        new THREE.PlaneGeometry(550, 550),
+        new THREE.MeshLambertMaterial({ color: 0x162032 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    // 沥青主干道
+    const roadMat = new THREE.MeshLambertMaterial({ color: 0x293548 });
+    const roadNS = new THREE.Mesh(new THREE.PlaneGeometry(roadWidthNS, 550), roadMat);
+    roadNS.rotation.x = -Math.PI / 2;
+    roadNS.position.set(crossCenter.x, 0.08, 0);
+    roadNS.receiveShadow = true;
+    scene.add(roadNS);
+
+    const roadEW = new THREE.Mesh(new THREE.PlaneGeometry(550, roadWidthEW), roadMat);
+    roadEW.rotation.x = -Math.PI / 2;
+    roadEW.position.set(0, 0.1, crossCenter.z);
+    roadEW.receiveShadow = true;
+    scene.add(roadEW);
+
+    // 道路标线与十字路口斑马线（还原截图2细节）
+    const roadDetailsGroup = new THREE.Group();
+    const yellowLineMat = new THREE.MeshBasicMaterial({ color: 0xeab308, transparent: true, opacity: 0.75 });
+    const whiteLineMat = new THREE.MeshBasicMaterial({ color: 0xcbd5e1, transparent: true, opacity: 0.65 });
+
+    // 四向双黄线与车道虚线
+    [[-140, -26], [26, 140]].forEach(range => {
+        const len = range[1] - range[0];
+        const mid = (range[0] + range[1]) / 2;
+        // 南北向黄线
+        const yNS = new THREE.Mesh(new THREE.PlaneGeometry(0.6, len), yellowLineMat);
+        yNS.rotation.x = -Math.PI / 2;
+        yNS.position.set(crossCenter.x, 0.15, crossCenter.z + mid);
+        roadDetailsGroup.add(yNS);
+        // 东西向黄线
+        const yEW = new THREE.Mesh(new THREE.PlaneGeometry(len, 0.6), yellowLineMat);
+        yEW.rotation.x = -Math.PI / 2;
+        yEW.position.set(crossCenter.x + mid, 0.15, crossCenter.z);
+        roadDetailsGroup.add(yEW);
+    });
+
+    // 四个路口斑马线
+    for (let s = -11; s <= 11; s += 2.2) {
+        // 北侧与南侧斑马线
+        [-21, 21].forEach(zOff => {
+            const stripe = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 4.5), whiteLineMat);
+            stripe.rotation.x = -Math.PI / 2;
+            stripe.position.set(crossCenter.x + s, 0.16, crossCenter.z + zOff);
+            roadDetailsGroup.add(stripe);
+        });
+        // 东侧与西侧斑马线
+        [-19, 19].forEach(xOff => {
+            const stripe = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 1.1), whiteLineMat);
+            stripe.rotation.x = -Math.PI / 2;
+            stripe.position.set(crossCenter.x + xOff, 0.16, crossCenter.z + s);
+            roadDetailsGroup.add(stripe);
+        });
+    }
+    scene.add(roadDetailsGroup);
+
+    // 还原截图2中的“蓝色虚线”转角弧度护栏线（直观展现马路弧度如何环抱东北角）
+    const blueCurvePoints = [];
+    for (let i = 0; i <= 40; i++) {
+        const t = i / 40;
+        // 从北侧道路边缘圆滑过渡到东侧道路边缘（形成外凸向路口、内凹环抱大楼的圆弧）
+        const angle = Math.PI + t * (Math.PI / 2); // 180度到270度
+        const arcCenterX = crossCenter.x + 42;
+        const arcCenterZ = crossCenter.z + 44;
+        const bx = arcCenterX + Math.cos(angle) * 28;
+        const bz = arcCenterZ + Math.sin(angle) * 28;
+        blueCurvePoints.push(new THREE.Vector3(bx, 0.25, bz));
+    }
+    // 延伸两端直线
+    blueCurvePoints.unshift(new THREE.Vector3(crossCenter.x + 14, 0.25, crossCenter.z + 95));
+    blueCurvePoints.push(new THREE.Vector3(crossCenter.x + 105, 0.25, crossCenter.z + 16));
+
+    const blueCurveGeo = new THREE.BufferGeometry().setFromPoints(blueCurvePoints);
+    const blueCurveMat = new THREE.LineDashedMaterial({ color: 0x60a5fa, dashSize: 2.2, gapSize: 1.4, linewidth: 2 });
+    const blueDashedLine = new THREE.Line(blueCurveGeo, blueCurveMat);
+    blueDashedLine.computeLineDistances();
+    scene.add(blueDashedLine);
+
+    // 4. 风水地面热力圈
+    // (a) 十字路口红色煞气圈
+    const shaZone = new THREE.Mesh(
+        new THREE.RingGeometry(2, 22, 48),
+        new THREE.MeshBasicMaterial({ color: 0xef4444, side: THREE.DoubleSide, transparent: true, opacity: 0.28 })
+    );
+    shaZone.rotation.x = -Math.PI / 2;
+    shaZone.position.set(crossCenter.x, 0.18, crossCenter.z);
+    scene.add(shaZone);
+
+    // (b) 随楼栋位置自动移动的绿色内明堂聚气圈
+    const mingtang = new THREE.Mesh(
+        new THREE.CircleGeometry(22, 48),
+        new THREE.MeshBasicMaterial({ color: 0x22c55e, side: THREE.DoubleSide, transparent: true, opacity: 0.22 })
+    );
+    mingtang.rotation.x = -Math.PI / 2;
+    scene.add(mingtang);
+
+    // 5. 【核心升级】：十字路口四角绿化带 + 目标楼前“玉带环抱”双层护宅林与白色弧形步道
+    const allTreesGroup = new THREE.Group();
+    scene.add(allTreesGroup);
+
+    const trunkMat = new THREE.MeshLambertMaterial({ color: 0x5c4033 });
+    const leafMatDark = new THREE.MeshLambertMaterial({ color: 0x15803d });
+    const leafMatLight = new THREE.MeshLambertMaterial({ color: 0x22c55e });
+    const leafMatMid = new THREE.MeshLambertMaterial({ color: 0x16a34a });
+
+    // 创建细腻的多簇自然树冠模型（告别单调圆球）
+    function createDetailedTree(scale = 1.0) {
+        const tree = new THREE.Group();
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.32 * scale, 0.5 * scale, 2.2 * scale, 7), trunkMat);
+        trunk.position.y = 1.1 * scale;
+        tree.add(trunk);
+
+        // 主树冠 + 3个副树冠簇，营造真实蓬松树冠感
+        const mainCrown = new THREE.Mesh(new THREE.DodecahedronGeometry(2.1 * scale, 1), leafMatMid);
+        mainCrown.position.y = 3.6 * scale;
+        mainCrown.castShadow = true;
+        tree.add(mainCrown);
+
+        const sub1 = new THREE.Mesh(new THREE.DodecahedronGeometry(1.5 * scale, 1), leafMatLight);
+        sub1.position.set(1.0 * scale, 3.2 * scale, 0.7 * scale);
+        tree.add(sub1);
+
+        const sub2 = new THREE.Mesh(new THREE.DodecahedronGeometry(1.6 * scale, 1), leafMatDark);
+        sub2.position.set(-1.0 * scale, 3.0 * scale, -0.6 * scale);
+        tree.add(sub2);
+
+        const sub3 = new THREE.Mesh(new THREE.DodecahedronGeometry(1.4 * scale, 1), leafMatLight);
+        sub3.position.set(0.2 * scale, 4.4 * scale, -0.5 * scale);
+        tree.add(sub3);
+
+        return tree;
+    }
+
+    // 5.1 专门存放目标大楼前方“玉带环抱护宅林 + 弧形景观步道”的分组（支持微调）
+    const embraceTreeGroup = new THREE.Group();
+    scene.add(embraceTreeGroup);
+
+    function buildAllQuadrantTrees(embraceOffset = 0) {
+        // 清空重建环抱组
+        while (embraceTreeGroup.children.length > 0) {
+            embraceTreeGroup.remove(embraceTreeGroup.children[0]);
+        }
+
+        // 【第一部分：目标大楼所在的东北象限（+X, +Z）—— 严格还原截图2中“外凸向路、内凹环抱大楼”的弧形密林】
+        // 圆弧圆心设在东北侧深处 (X=38, Z=28)，树林沿着半径 R=24~30 的圆弧分布在西南方向（角度 165° ~ 305°）
+        // 这样圆弧的肚子朝向十字路口，而凹面温柔地环抱着大楼！
+        const embraceCenterX = 36;
+        const embraceCenterZ = 24;
+        const baseRadius = 24 - embraceOffset; // 紧贴道路内侧，环抱大楼
+
+        // 铺设林间绿色草坪基底与截图2中的白色弧形步道
+        const pathPoints = [];
+        for (let deg = 175; deg <= 295; deg += 4) {
+            const rad = THREE.MathUtils.degToRad(deg);
+            const px = embraceCenterX + Math.cos(rad) * (baseRadius - 2.2);
+            const pz = embraceCenterZ + Math.sin(rad) * (baseRadius - 2.2);
+            pathPoints.push(new THREE.Vector3(px, 0.22, pz));
+        }
+        const pathCurve = new THREE.CatmullRomCurve3(pathPoints);
+        const tubeGeo = new THREE.TubeGeometry(pathCurve, 32, 0.9, 6, false);
+        const pathMesh = new THREE.Mesh(tubeGeo, new THREE.MeshBasicMaterial({ color: 0xe2e8f0 }));
+        pathMesh.scale.y = 0.1;
+        embraceTreeGroup.add(pathMesh);
+
+        // 双排环抱主林带（外排紧贴马路挡煞，内排环抱大楼明堂）
+        for (let deg = 170; deg <= 302; deg += 9.5) {
+            const rad = THREE.MathUtils.degToRad(deg);
+            // 外排大树（沿马路转角弧线）
+            const rOut = baseRadius + 1.2;
+            const tOut = createDetailedTree(1.05);
+            tOut.position.set(embraceCenterX + Math.cos(rad) * rOut, 0, embraceCenterZ + Math.sin(rad) * rOut);
+            embraceTreeGroup.add(tOut);
+
+            // 内排错落树（隔着白色步道，环抱大楼）
+            if (deg % 19 < 10) {
+                const rIn = baseRadius - 4.8;
+                const tIn = createDetailedTree(0.88);
+                tIn.position.set(embraceCenterX + Math.cos(rad + 0.06) * rIn, 0, embraceCenterZ + Math.sin(rad + 0.06) * rIn);
+                embraceTreeGroup.add(tIn);
+            }
+        }
+
+        // 向北侧（常武北路东侧）与东侧（人民路北侧）自然延伸的行道树
+        for (let z = 32; z <= 95; z += 9) {
+            const tr = createDetailedTree(0.9);
+            tr.position.set(crossCenter.x + 18, 0, z);
+            embraceTreeGroup.add(tr);
+        }
+        for (let x = 48; x <= 110; x += 9) {
+            const tr = createDetailedTree(0.9);
+            tr.position.set(x, 0, crossCenter.z + 20);
+            embraceTreeGroup.add(tr);
+        }
+    }
+
+    // 【第二部分：十字路口其余三个转角的弧形绿化带（西北、西南、东南四角全覆盖，还原截图2）】
+    function buildOtherThreeCornersTrees() {
+        const corners = [
+            // 西北角 (-X, +Z)：圆心在西北深处，弧朝东南路口
+            { cx: crossCenter.x - 38, cz: crossCenter.z + 40, startDeg: 270, endDeg: 360, r: 22 },
+            // 西南角 (-X, -Z)：圆心在西南深处，弧朝东北路口
+            { cx: crossCenter.x - 38, cz: crossCenter.z - 40, startDeg: 0, endDeg: 90, r: 22 },
+            // 东南角 (+X, -Z)：圆心在东南深处，弧朝西北路口
+            { cx: crossCenter.x + 38, cz: crossCenter.z - 40, startDeg: 90, endDeg: 180, r: 22 }
+        ];
+
+        corners.forEach(c => {
+            // 转角弧形双层树
+            for (let deg = c.startDeg; deg <= c.endDeg; deg += 11) {
+                const rad = THREE.MathUtils.degToRad(deg);
+                const tree1 = createDetailedTree(0.95);
+                tree1.position.set(c.cx + Math.cos(rad) * c.r, 0, c.cz + Math.sin(rad) * c.r);
+                allTreesGroup.add(tree1);
+
+                if (deg % 22 === 0) {
+                    const tree2 = createDetailedTree(0.8);
+                    tree2.position.set(c.cx + Math.cos(rad + 0.05) * (c.r + 3.5), 0, c.cz + Math.sin(rad + 0.05) * (c.r + 3.5));
+                    allTreesGroup.add(tree2);
+                }
+            }
+        });
+
+        // 其余三条道路两侧延伸的林荫行道树
+        for (let d = 42; d <= 105; d += 10) {
+            // 西侧道路南北两旁
+            const tWN = createDetailedTree(0.85);
+            tWN.position.set(crossCenter.x - d, 0, crossCenter.z + 20);
+            allTreesGroup.add(tWN);
+
+            const tWS = createDetailedTree(0.85);
+            tWS.position.set(crossCenter.x - d, 0, crossCenter.z - 20);
+            allTreesGroup.add(tWS);
+
+            // 东侧道路南旁
+            const tES = createDetailedTree(0.85);
+            tES.position.set(crossCenter.x + d, 0, crossCenter.z - 20);
+            allTreesGroup.add(tES);
+
+            // 南北道路西旁与南端
+            const tNW = createDetailedTree(0.85);
+            tNW.position.set(crossCenter.x - 18, 0, crossCenter.z + d);
+            allTreesGroup.add(tNW);
+
+            const tSW = createDetailedTree(0.85);
+            tSW.position.set(crossCenter.x - 18, 0, crossCenter.z - d);
+            allTreesGroup.add(tSW);
+
+            const tSE = createDetailedTree(0.85);
+            tSE.position.set(crossCenter.x + 18, 0, crossCenter.z - d);
+            allTreesGroup.add(tSE);
+        }
+    }
+
+    buildAllQuadrantTrees(0);
+    buildOtherThreeCornersTrees();
+
+    // 6. 构建细腻的目标高层建筑与商业裙楼（生成窗户网格纹理）
+    function createBuildingWindowTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillRect(0, 0, 256, 64);
+        // 绘制精细窗格
+        ctx.fillStyle = '#475569';
+        for (let x = 8; x < 248; x += 16) {
+            ctx.fillRect(x, 12, 10, 40);
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillRect(x + 1, 14, 4, 36);
+            ctx.fillStyle = '#475569';
+        }
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        return tex;
+    }
+    const winTexture = createBuildingWindowTexture();
+
+    const targetGroup = new THREE.Group();
+    scene.add(targetGroup);
+
+    // 6.1 蓝色商业裙楼底座（做成顺应环抱弧度的多段式底座，避免生硬凸出）
+    const podiumMat = new THREE.MeshPhongMaterial({ 
+        color: 0x38bdf8, transparent: true, opacity: 0.78, shininess: 60 
+    });
+    const podiumMain = new THREE.Mesh(new THREE.BoxGeometry(52, 5.6, 13), podiumMat);
+    podiumMain.position.set(0, 2.8, -1.2);
+    podiumMain.castShadow = true;
+    podiumMain.receiveShadow = true;
+    targetGroup.add(podiumMain);
+
+    // 两侧柔和内收的裙楼翼楼
+    const podiumLeft = new THREE.Mesh(new THREE.BoxGeometry(18, 5.6, 11), podiumMat);
+    podiumLeft.position.set(31, 2.8, 1.5);
+    podiumLeft.rotation.y = -0.25;
+    targetGroup.add(podiumLeft);
+
+    const podiumRight = new THREE.Mesh(new THREE.BoxGeometry(14, 5.6, 11), podiumMat);
+    podiumRight.position.set(-29, 2.8, 1.0);
+    podiumRight.rotation.y = 0.22;
+    targetGroup.add(podiumRight);
+
+    // 6.2 20层住宅主楼与第7层高亮组件
+    const floorHeight = 1.65;
+    const totalFloors = 20;
+    const buildingWidth = 44;
+    const buildingDepth = 10;
+
+    let highlightMesh = null;
+    let windowArrowHelper = null;
+    let windowSideDir = -1;
+
+    const wallMatWithWin = new THREE.MeshLambertMaterial({ map: winTexture });
+    const wallMatPlain = new THREE.MeshLambertMaterial({ color: 0xcbd5e1 });
+
+    for (let i = 1; i <= totalFloors; i++) {
+        const yPos = 5.6 + (i - 0.5) * floorHeight;
+        const floorMesh = new THREE.Mesh(
+            new THREE.BoxGeometry(buildingWidth, floorHeight - 0.14, buildingDepth),
+            [wallMatPlain, wallMatPlain, wallMatPlain, wallMatPlain, wallMatWithWin, wallMatWithWin]
+        );
+        floorMesh.position.set(0, yPos, 0);
+        floorMesh.castShadow = true;
+        floorMesh.receiveShadow = true;
+        targetGroup.add(floorMesh);
+
+        if (i === 7) {
+            highlightMesh = new THREE.Mesh(
+                new THREE.BoxGeometry(14, floorHeight + 0.25, buildingDepth + 0.7),
+                new THREE.MeshBasicMaterial({ color: 0xfbbf24 })
+            );
+            highlightMesh.position.set(0, yPos, 0);
+            targetGroup.add(highlightMesh);
+
+            const arrowDir = new THREE.Vector3(0, 0, windowSideDir);
+            windowArrowHelper = new THREE.ArrowHelper(arrowDir, new THREE.Vector3(0, 0, 0), 13, 0xfbbf24, 3.6, 2.4);
+            highlightMesh.add(windowArrowHelper);
+        }
+    }
+
+    // 楼顶天台女儿墙细节
+    const roofRim = new THREE.Mesh(
+        new THREE.BoxGeometry(buildingWidth + 0.8, 1.0, buildingDepth + 0.8),
+        new THREE.MeshLambertMaterial({ color: 0x94a3b8 })
+    );
+    roofRim.position.set(0, 5.6 + totalFloors * floorHeight + 0.5, 0);
+    targetGroup.add(roofRim);
+
+    // 7. 周边四象呼应楼群（包含截图2左下角带圆顶的特色建筑）
+    const surroundMat = new THREE.MeshLambertMaterial({ color: 0x475569, transparent: true, opacity: 0.55 });
+    const surroundBuildings = [
+        // 北侧后方玄武靠山高层群
+        { x: 42, z: 75, w: 22, d: 11, h: 38 },
+        { x: 72, z: 65, w: 22, d: 11, h: 38 },
+        { x: 16, z: 82, w: 22, d: 11, h: 38 },
+        // 西北角建筑群
+        { x: -52, z: 38, w: 32, d: 24, h: 24 },
+        { x: -78, z: 58, w: 24, d: 12, h: 32 },
+        // 西南角对角建筑（含圆顶地标）
+        { x: -46, z: -58, w: 36, d: 22, h: 22 },
+        { x: -30, z: -76, w: 14, d: 34, h: 34 },
+        // 东南角建筑群
+        { x: 45, z: -58, w: 36, d: 24, h: 28 },
+        { x: 80, z: -52, w: 20, d: 20, h: 36 }
+    ];
+    surroundBuildings.forEach(b => {
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(b.w, b.h, b.d), surroundMat);
+        mesh.position.set(b.x, b.h / 2, b.z);
+        scene.add(mesh);
+    });
+    // 还原截图2左下角建筑的白色圆顶细节
+    const domeMesh = new THREE.Mesh(
+        new THREE.SphereGeometry(5, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+        new THREE.MeshLambertMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.7 })
+    );
+    domeMesh.position.set(-34, 22, -52);
+    scene.add(domeMesh);
+
+    // 8. 实时计算7楼世界坐标与窗户朝向法线
+    const targetWorldPos = new THREE.Vector3();
+    const windowWorldNormal = new THREE.Vector3();
+    const mingtangCenterPos = new THREE.Vector3();
+
+    function updateBuildingTransform() {
+        const rotDeg = parseFloat(document.getElementById('slider-rot').value);
+        const posX = parseFloat(document.getElementById('slider-posX').value);
+        const posZ = parseFloat(document.getElementById('slider-posZ').value);
+        const unitX = parseFloat(document.getElementById('slider-unit').value);
+
+        document.getElementById('val-rot').innerText = `${rotDeg}°`;
+        document.getElementById('val-posX').innerText = posX;
+        document.getElementById('val-posZ').innerText = posZ;
+        document.getElementById('val-unit').innerText = unitX > 3 ? `偏左(${unitX})` : (unitX < -3 ? `偏右(${unitX})` : `居中(${unitX})`);
+
+        targetGroup.position.set(posX, 0, posZ);
+        targetGroup.rotation.y = THREE.MathUtils.degToRad(rotDeg);
+        highlightMesh.position.x = unitX;
+
+        targetGroup.updateMatrixWorld(true);
+        highlightMesh.getWorldPosition(targetWorldPos);
+
+        windowWorldNormal.set(0, 0, windowSideDir).applyQuaternion(
+            targetGroup.getWorldQuaternion(new THREE.Quaternion())
+        ).normalize();
+
+        // 绿色内明堂圈始终落在7楼窗户正前方 15 单位的环抱广场内
+        mingtangCenterPos.copy(targetWorldPos).addScaledVector(windowWorldNormal, 15);
+        mingtang.position.set(mingtangCenterPos.x, 0.2, mingtangCenterPos.z);
+
+        updateFengshuiFeedback();
+    }
+
+    window.updateTreeEmbrace = function() {
+        const treeVal = parseFloat(document.getElementById('slider-tree').value);
+        document.getElementById('val-tree').innerText = treeVal === 0 ? `标准环抱(0)` : (treeVal > 0 ? `外扩(+${treeVal})` : `收拢(${treeVal})`);
+        buildAllQuadrantTrees(-treeVal);
+    };
+
+    function updateFengshuiFeedback() {
+        const toCross = new THREE.Vector3().subVectors(crossCenter, targetWorldPos).setY(0).normalize();
+        const dot = windowWorldNormal.dot(toCross);
+        const statusEl = document.getElementById('fengshui-status');
+
+        if (dot > 0.75) {
+            statusEl.style.borderLeftColor = '#22c55e';
+            statusEl.innerHTML = `✨ <b>玉带环抱·化煞生旺（当前最佳还原态）</b>：7楼正对前方开阔明堂，楼下双层弧形绿林沿着路口边缘温柔环抱大楼，将路口车流噪气向两侧导开，清润吉气徐徐升入7楼窗前！`;
+        } else if (dot > 0.15) {
+            statusEl.style.borderLeftColor = '#4ade80';
+            statusEl.innerHTML = `🌿 <b>斜纳明堂·藏风聚气</b>：当前角度下，7楼既能采纳环抱绿林上方的明堂吉气，又斜向避开了十字路口中心直冲线。`;
+        } else {
+            statusEl.style.borderLeftColor = '#38bdf8';
+            statusEl.innerHTML = `🛡️ <b>背路静谧格局</b>：当前窗户朝向小区内侧，外局路口车流被楼体自身遮挡，安静宜居。`;
+        }
+    }
+
+    window.stepRotate = function(delta) {
+        const slider = document.getElementById('slider-rot');
+        let v = parseFloat(slider.value) + delta;
+        if (v > 180) v -= 360;
+        if (v < -180) v += 360;
+        slider.value = v;
+        updateBuildingTransform();
+    };
+    window.stepPos = function(axis, delta) {
+        const slider = document.getElementById(axis === 'x' ? 'slider-posX' : 'slider-posZ');
+        slider.value = parseFloat(slider.value) + delta;
+        updateBuildingTransform();
+    };
+    window.stepUnit = function(delta) {
+        const slider = document.getElementById('slider-unit');
+        slider.value = parseFloat(slider.value) + delta;
+        updateBuildingTransform();
+    };
+    window.stepTree = function(delta) {
+        const slider = document.getElementById('slider-tree');
+        slider.value = parseFloat(slider.value) + delta;
+        updateTreeEmbrace();
+    };
+    window.toggleWindowSide = function() {
+        windowSideDir *= -1;
+        windowArrowHelper.setDirection(new THREE.Vector3(0, 0, windowSideDir));
+        document.getElementById('btn-flip').innerText = `切换正/背面 (当前: ${windowSideDir === -1 ? '朝前' : '朝背'})`;
+        updateBuildingTransform();
+    };
+    window.resetBuilding = function() {
+        // 默认直接对齐到你在截图1中调试出的 48°、居中(0) 理想状态
+        document.getElementById('slider-rot').value = 48;
+        document.getElementById('slider-posX').value = 36;
+        document.getElementById('slider-posZ').value = 26;
+        document.getElementById('slider-unit').value = 0;
+        document.getElementById('slider-tree').value = 0;
+        updateTreeEmbrace();
+        if (windowSideDir !== -1) toggleWindowSide();
+        else updateBuildingTransform();
+    };
+
+    updateBuildingTransform();
+
+    // 9. 细腻流光拖尾粒子系统（展示：红气直行 -> 橙气顺着环抱绿林弧线滑开 -> 绿气在环抱明堂内升向7楼）
+    const particles = [];
+
+    function createTrailParticle(type, index) {
+        let color, radius;
+        if (type === 'sha') { color = 0xef4444; radius = 0.85; }
+        else if (type === 'deflect') { color = 0xf97316; radius = 0.8; }
+        else { color = 0x4ade80; radius = 0.95; }
+
+        // 主粒子 + 2个渐隐尾迹粒子，形成流光效果
+        const group = new THREE.Group();
+        [1.0, 0.65, 0.35].forEach((scale, idx) => {
+            const m = new THREE.Mesh(
+                new THREE.SphereGeometry(radius * scale, 10, 10),
+                new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: scale * 0.9 })
+            );
+            m.userData.offsetIdx = idx;
+            group.add(m);
+        });
+        scene.add(group);
+        particles.push({ group, type, index, progress: Math.random(), history: [] });
+    }
+
+    for (let i = 0; i < 36; i++) createTrailParticle('sha', i);
+    for (let i = 0; i < 36; i++) createTrailParticle('deflect', i);
+    for (let i = 0; i < 42; i++) createTrailParticle('lucky', i);
+
+    function computeParticlePos(p, t) {
+        const rightVec = new THREE.Vector3(-windowWorldNormal.z, 0, windowWorldNormal.x).normalize();
+        const pos = new THREE.Vector3();
+
+        if (p.type === 'sha') {
+            // 红色：主干道车流疾驰
+            if (p.index % 2 === 0) {
+                pos.set(-150 + t * 300, 1.6, crossCenter.z + (p.index % 5 - 2) * 2.6);
+            } else {
+                pos.set(crossCenter.x + (p.index % 5 - 2) * 2.6, 1.6, -150 + t * 300);
+            }
+        } 
+        else if (p.type === 'deflect') {
+            // 橙色：严格顺着东北角“外凸环抱绿林”的外侧弧线滑开分流
+            const embraceCenterX = 36;
+            const embraceCenterZ = 24;
+            const treeOffset = parseFloat(document.getElementById('slider-tree').value);
+            const rArc = 27.5 + treeOffset + (p.index % 3) * 1.2;
+            const deg = 170 + t * 135; // 沿着环抱林外缘滑过
+            const rad = THREE.MathUtils.degToRad(deg);
+            pos.set(embraceCenterX + Math.cos(rad) * rArc, 3.8, embraceCenterZ + Math.sin(rad) * rArc);
+        } 
+        else if (p.type === 'lucky') {
+            // 绿色：从环抱树林内侧的明堂广场柔和汇聚，盘旋升向你调好的 7 楼窗口
+            const lateralOffset = ((p.index % 9) - 4) * 2.1;
+            const startPos = new THREE.Vector3().copy(targetWorldPos)
+                .addScaledVector(windowWorldNormal, 22)
+                .addScaledVector(rightVec, lateralOffset);
+            const endPos = new THREE.Vector3().copy(targetWorldPos)
+                .addScaledVector(windowWorldNormal, 3.5)
+                .addScaledVector(rightVec, lateralOffset * 0.35);
+
+            pos.lerpVectors(startPos, endPos, t);
+            pos.y = 3.6 + Math.sin(t * Math.PI * 0.58) * (targetWorldPos.y - 2.8);
+        }
+        return pos;
+    }
+
+    function updateParticles() {
+        particles.forEach(p => {
+            p.progress += 0.0042;
+            if (p.progress > 1) p.progress = 0;
+
+            p.group.children.forEach((child, idx) => {
+                let subT = p.progress - idx * 0.012;
+                if (subT < 0) subT += 1;
+                const pos = computeParticlePos(p, subT);
+                child.position.copy(pos);
+            });
+        });
+    }
+
+    // 10. 视角快速切换（新增“卫星正俯视”方便直接对照截图2）
+    window.setView = function(mode) {
+        document.querySelectorAll('.btn-group button').forEach(b => b.classList.remove('active'));
+        if (mode === 'bird') {
+            document.getElementById('btn-bird').classList.add('active');
+            camera.position.set(12, 125, -145);
+            controls.target.set(12, 6, 8);
+        } else if (mode === 'top') {
+            document.getElementById('btn-top').classList.add('active');
+            // 垂直正俯视，直接对照截图2的四角树木与环抱弧度
+            camera.position.set(8, 175, -10);
+            controls.target.set(8, 0, -5);
+        } else if (mode === 'window') {
+            document.getElementById('btn-window').classList.add('active');
+            updateBuildingTransform();
+            const eyePos = new THREE.Vector3().copy(targetWorldPos).addScaledVector(windowWorldNormal, 5.5);
+            eyePos.y = targetWorldPos.y + 1.5;
+            const lookTarget = new THREE.Vector3().copy(targetWorldPos).addScaledVector(windowWorldNormal, 45);
+            lookTarget.y = 4;
+            camera.position.copy(eyePos);
+            controls.target.copy(lookTarget);
+        } else if (mode === 'cross') {
+            document.getElementById('btn-cross').classList.add('active');
+            camera.position.set(-38, 18, -44);
+            controls.target.copy(targetWorldPos);
+        }
+    };
+
+    // 11. 浮动标签追踪
+    const labelEl = document.getElementById('target-label');
+    function updateLabelPosition() {
+        const pos = targetWorldPos.clone();
+        pos.y += 3.8;
+        pos.project(camera);
+
+        const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
+        const y = (-(pos.y * 0.5) + 0.5) * window.innerHeight;
+
+        if (pos.z < 1) {
+            labelEl.style.display = 'block';
+            labelEl.style.left = `${x}px`;
+            labelEl.style.top = `${y}px`;
+        } else {
+            labelEl.style.display = 'none';
+        }
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        updateParticles();
+        updateLabelPosition();
+        renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+</script>
+</body>
+</html>
